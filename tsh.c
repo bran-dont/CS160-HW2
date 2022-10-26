@@ -1,7 +1,7 @@
 /* 
  * tsh - A tiny shell program with job control
  * 
- * <Put your name and ID here>
+ * Ryan Le, SID: 862169036
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,6 +165,11 @@ int main(int argc, char **argv)
 */
 void eval(char *cmdline) 
 {
+    char *argv[MAXLINE];
+    int test = parseline(cmdline, argv);
+    //printf(argv[0]);
+    //printf("\n");
+    do_bgfg(argv);
     return;
 }
 
@@ -239,6 +244,36 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    char bg[3] = {'b', 'g', '\0'};
+    char fg[3] = {'f', 'g', '\0'};
+
+    char *string[5];
+
+    unsigned int index = 0;
+    while (argv[index] != NULL && argv[index] != ' ') {
+        string[index] = argv[index];
+        //printf("string[%d] is %s\n", index, string[index]);
+        index++;
+    }
+
+    if (strcmp(string[0], bg) == 0) {
+        printf("bg\n");
+    }
+    else if (strcmp(string[0], fg) == 0)
+    {
+        printf("fg\n");
+    }
+    else {
+        printf("Error determing bg or fg\n");
+    }
+
+    char *position = strchr(string[1], '%');
+    if (position != NULL) {
+        printf("FOUND A PERCENT! %s\n", position);
+    }
+
+
+
     return;
 }
 
