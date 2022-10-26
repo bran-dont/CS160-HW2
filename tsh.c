@@ -1,7 +1,7 @@
 /* 
  * tsh - A tiny shell program with job control
  * 
- * <Put your name and ID here>
+ * Ryan Le | rle026
  * Brandon Tran | btran117
  */
 #include <stdio.h>
@@ -186,7 +186,6 @@ void eval(char *cmdline)
             }
         }
     }
-
     return;
 }
 
@@ -283,6 +282,85 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
+    // 1 if BG. 0 if FG
+    int task;
+    // 1 if JID. 0 if not JID
+    int isJID;
+
+    char bg[3] = {'b', 'g', '\0'};
+    char fg[3] = {'f', 'g', '\0'};
+    char *string[5];
+
+    // Create string array
+    unsigned int index = 0;
+    while (argv[index] != NULL && argv[index] != ' ') {
+        string[index] = argv[index];
+        //printf("string[%d] is %s\n", index, string[index]);
+        index++;
+    }
+
+    // Check what task this is
+    if (strcmp(string[0], bg) == 0) {
+        //printf("bg\n");
+        task = 1;
+    }
+    else if (strcmp(string[0], fg) == 0)
+    {
+        //printf("fg\n");
+        task = 0;
+    }
+    else {
+        printf("Error determining bg or fg\n");
+        return;
+    }
+
+    // Is this a JID or PID?
+    char *position = strchr(string[1], '%');
+    int job;
+    if (position != NULL) {
+        printf("FOUND A PERCENT! %s\n", (position)+1);
+        isJID = 1;
+        job = (int)((position)+1);
+    }
+    else {
+        isJID = 0;
+        job = (pid_t)(string[1]);
+    }
+
+    //printf("Listing jobs\n");
+    //listjobs(jobs);
+    //printf("Done\n");
+
+    // Now get job
+    struct job_t *currJob = NULL;
+    if (isJID == 1) {
+        // JID
+        currJob = getjobjid(jobs, string[1]);
+    }
+    else if (isJID == 0) {
+        // PID
+        currJob = getjobpid(jobs, (pid_t)(string[1]));
+    }
+    // If job exists, update state
+    if (currJob == NULL) {
+        printf("%s: No such job\n", string[1]);
+        return;
+    }
+    else if (task == 1 && currJob->state == ST) {
+        // BG
+        // ST -> BG
+        currJob->state = BG;
+    }
+    else if (task == 0 && (currJob->state == ST || currJob->state == BG)) {
+        // FG 
+        // ST -> FG
+        // BG -> FG
+        pid_t currFGtaskPID = fgpid(task);
+        if (currFGtask != 0) {
+            getjobpid(jobs, getjobpid(jobs, currFGtaskPID))->state = ST;
+        }
+        currJob->state = FG;
+    }
     return;
 }
 
