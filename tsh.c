@@ -1,7 +1,8 @@
 /* 
  * tsh - A tiny shell program with job control
  * 
- * Ryan Le, SID: 862169036
+ * Ryan Le | rle026
+ * Brandon Tran | btran117
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -167,9 +168,24 @@ void eval(char *cmdline)
 {
     char *argv[MAXLINE];
     int test = parseline(cmdline, argv);
-    //printf(argv[0]);
-    //printf("\n");
-    do_bgfg(argv);
+    printf("parseline returns %d\n", test);
+    if (argv[0] != NULL) {
+        if (!builtin_cmd(argv)) {
+            int index = 0;
+            while (argv[index] != NULL) {
+                index++;
+            }
+            int job_loc = (argv[index - 1] == '&') ? BG : FG;
+
+            int pid;
+            if (pid = fork()) {
+                addjob(jobs, pid, job_loc, cmdline);
+            }
+            else {
+                // run func?
+            }
+        }
+    }
     return;
 }
 
@@ -236,6 +252,28 @@ int parseline(const char *cmdline, char **argv)
  */
 int builtin_cmd(char **argv) 
 {
+    char quit[5] = {'q', 'u', 'i', 't', '\0'};
+    char jobs[5] = {'j', 'o', 'b', 's', '\0'};
+    char bg[3] = {'b', 'g', '\0'};
+    char fg[3] = {'f', 'g', '\0'};
+    if (argv[0] == NULL) { return 0; }
+    if (strcmp(argv[0], quit) == 0) {
+        sigquit_handler(SIGQUIT);
+        return 1;
+    }
+    if (strcmp(argv[0], jobs) == 0) {
+        listjobs(jobs);
+        return 1;
+    }
+    if (strcmp(argv[0], bg) == 0) {
+        do_bgfg(argv);
+        return 1;
+    }
+    if (strcmp(argv[0], fg) == 0) {
+        do_bgfg(argv);
+        return 1;
+    }
+
     return 0;     /* not a builtin command */
 }
 
