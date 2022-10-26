@@ -170,7 +170,21 @@ void eval(char *cmdline)
     int test = parseline(cmdline, argv);
     printf("parseline returns %d\n", test);
     if (argv[0] != NULL) {
-        builtin_cmd(argv);
+        if (!builtin_cmd(argv)) {
+            int index = 0;
+            while (argv[index] != NULL) {
+                index++;
+            }
+            int job_loc = (argv[index - 1] == '&') ? BG : FG;
+
+            int pid;
+            if (pid = fork()) {
+                addjob(jobs, pid, job_loc, cmdline);
+            }
+            else {
+                // run func?
+            }
+        }
     }
 
     return;
