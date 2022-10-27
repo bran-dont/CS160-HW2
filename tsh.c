@@ -418,13 +418,13 @@ void waitfg(pid_t pid)
 {
     while (1) {
         //listjobs(jobs);
-        if (pid != fgpid(jobs)) break; // stop waiting when job isn't in foreground anymore
-        else sleep(1); // wait
+        if (pid != fgpid(jobs)) {
+            break;
+        }
+        else {
+            sleep(1);
+        }
     }
-    // while(pid == fgpid(jobs)) {
-    //     sleep(1);
-    // }
-    // printf("done waiting\n");
     return;
 }
 
