@@ -168,7 +168,7 @@ void eval(char *cmdline)
 {
     char *argv[MAXLINE];
     int test = parseline(cmdline, argv);
-    printf("parseline returns %d\n", test);
+    //printf("parseline returns %d\n", test);
     if (argv[0] != NULL) {
         if (!builtin_cmd(argv)) {
             int index = 0;
@@ -177,12 +177,26 @@ void eval(char *cmdline)
             }
             int job_loc = (argv[index - 1] == '&') ? BG : FG;
 
+            sigset_t mask;
+            sigemptyset(&mask);
+            sigaddset(&mask, SIGCHLD);
+            sigprocmask(SIG_BLOCK, &mask, NULL);
+
             int pid;
             if (pid = fork()) {
                 addjob(jobs, pid, job_loc, cmdline);
+                sigprocmask(SIG_UNBLOCK, &mask, NULL);
+                if (job_loc == FG) {
+                    waitfg(pid);
+                    //sigchld_handler(SIGCHLD);
+                }
             }
             else {
-                // run func?
+                // run func
+                sigprocmask(SIG_UNBLOCK, &mask, NULL);
+                setpgid(0, 0);
+                execve(argv[0], argv, environ);
+                //exit(0);
             }
         }
     }
@@ -258,8 +272,8 @@ int builtin_cmd(char **argv)
     char fg[3] = {'f', 'g', '\0'};
     if (argv[0] == NULL) { return 0; }
     if (strcmp(argv[0], quit) == 0) {
-        sigquit_handler(SIGQUIT);
-        return 1;
+        //sigquit_handler(SIGQUIT);
+        exit(0);
     }
     if (strcmp(argv[0], jobs) == 0) {
         listjobs(jobs);
@@ -267,6 +281,7 @@ int builtin_cmd(char **argv)
     }
     if (strcmp(argv[0], bg) == 0) {
         do_bgfg(argv);
+        //execve(argv[0])
         return 1;
     }
     if (strcmp(argv[0], fg) == 0) {
@@ -350,13 +365,14 @@ void do_bgfg(char **argv)
         // BG
         // ST -> BG
         currJob->state = BG;
+        printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
     }
     else if (task == 0 && (currJob->state == ST || currJob->state == BG)) {
         // FG 
         // ST -> FG
         // BG -> FG
         pid_t currFGtaskPID = fgpid(task);
-        if (currFGtask != 0) {
+        if (currFGtaskPID != 0) {
             getjobpid(jobs, getjobpid(jobs, currFGtaskPID))->state = ST;
         }
         currJob->state = FG;
@@ -385,6 +401,21 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+    pid_t pid;
+    int status;
+    while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
+        if (WIFEXITED(status)) {
+            deletejob(jobs, pid);
+        }
+        else if (WIFSIGNALED(status)) {
+            if (status == SIGSTOP || status == SIGINT) {
+                deletejob(jobs, pid);
+            }
+            else if (status == SIGTSTP) {
+                getjobpid(jobs, pid)->state = ST;
+            }
+        }
+    }
     return;
 }
 
@@ -395,6 +426,7 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    kill(-1 * fgpid(jobs), sig);
     return;
 }
 
@@ -405,6 +437,8 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
+    getjobpid(jobs, fgpid(jobs))->state = ST;
+    kill(-1 * fgpid(jobs), sig);
     return;
 }
 
