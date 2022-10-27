@@ -168,6 +168,7 @@ void eval(char *cmdline)
 {
     char *argv[MAXLINE];
     int test = parseline(cmdline, argv);
+    //printf("test is %d\n", test);
     //printf("parseline returns %d\n", test);
     if (argv[0] != NULL) {
         if (!builtin_cmd(argv)) {
@@ -175,7 +176,7 @@ void eval(char *cmdline)
             while (argv[index] != NULL) {
                 index++;
             }
-            int job_loc = (argv[index - 1] == '&') ? BG : FG;
+            //int job_loc = (*argv[index - 1] == '&') ? BG : FG;
 
             sigset_t mask;
             sigemptyset(&mask);
@@ -184,12 +185,24 @@ void eval(char *cmdline)
 
             int pid;
             if (pid = fork()) {
-                addjob(jobs, pid, job_loc, cmdline);
-                sigprocmask(SIG_UNBLOCK, &mask, NULL);
-                if (job_loc == FG) {
+                if (!test) {
+                    addjob(jobs, pid, FG, cmdline);
+                    sigprocmask(SIG_UNBLOCK, &mask, NULL);
                     waitfg(pid);
-                    //sigchld_handler(SIGCHLD);
                 }
+                else {
+                    addjob(jobs, pid, BG, cmdline);
+                    sigprocmask(SIG_UNBLOCK, &mask, NULL);
+                    printf("[%d] (%d) %s", pid2jid(pid), (int)pid, cmdline);
+                }
+                //sigprocmask(SIG_UNBLOCK, &mask, NULL);
+
+                // if (!test) {
+                //     waitfg(pid);
+                // }
+                // else {
+                //     printf("[%d] (%d) %s", pid2jid(pid), (int)pid, cmdline);
+                // }
             }
             else {
                 // run func
@@ -267,7 +280,6 @@ int parseline(const char *cmdline, char **argv)
 int builtin_cmd(char **argv) 
 {
     char quit[5] = {'q', 'u', 'i', 't', '\0'};
-    char jobs[5] = {'j', 'o', 'b', 's', '\0'};
     char bg[3] = {'b', 'g', '\0'};
     char fg[3] = {'f', 'g', '\0'};
     if (argv[0] == NULL) { return 0; }
@@ -275,7 +287,8 @@ int builtin_cmd(char **argv)
         //sigquit_handler(SIGQUIT);
         exit(0);
     }
-    if (strcmp(argv[0], jobs) == 0) {
+    if (strcmp(argv[0], "jobs") == 0) {
+        //printf("steve\n");
         listjobs(jobs);
         return 1;
     }
@@ -308,7 +321,7 @@ void do_bgfg(char **argv)
 
     // Create string array
     unsigned int index = 0;
-    while (argv[index] != NULL && argv[index] != ' ') {
+    while (argv[index] != NULL && *argv[index] != ' ') {
         string[index] = argv[index];
         //printf("string[%d] is %s\n", index, string[index]);
         index++;
@@ -333,7 +346,7 @@ void do_bgfg(char **argv)
     char *position = strchr(string[1], '%');
     int job;
     if (position != NULL) {
-        printf("FOUND A PERCENT! %s\n", (position)+1);
+        //printf("FOUND A PERCENT! %s\n", (position)+1);
         isJID = 1;
         job = (int)((position)+1);
     }
@@ -365,7 +378,7 @@ void do_bgfg(char **argv)
         // BG
         // ST -> BG
         currJob->state = BG;
-        printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
+        //printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
     }
     else if (task == 0 && (currJob->state == ST || currJob->state == BG)) {
         // FG 
@@ -385,6 +398,13 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while (1) {
+       if (pid != fgpid(jobs)) break; // stop waiting when job isn't in foreground anymore
+       else sleep(1); // wait
+    }
+    // while(pid == fgpid(jobs)) {
+    //     sleep(1);
+    // }
     return;
 }
 
@@ -409,11 +429,16 @@ void sigchld_handler(int sig)
         }
         else if (WIFSIGNALED(status)) {
             if (status == SIGSTOP || status == SIGINT) {
+                printf("Job [%d] (%d) terminated by signal %d\n",  pid2jid(pid), (int) pid, WTERMSIG(status)); 
                 deletejob(jobs, pid);
             }
             else if (status == SIGTSTP) {
                 getjobpid(jobs, pid)->state = ST;
             }
+        }
+        else if (WIFSTOPPED(status)) {
+            printf("Job [%d] (%d) stopped by signal %d\n",  pid2jid(pid), (int) pid, WTERMSIG(status)); 
+            getjobpid(jobs, pid)->state = ST;
         }
     }
     return;
@@ -437,7 +462,7 @@ void sigint_handler(int sig)
  */
 void sigtstp_handler(int sig) 
 {
-    getjobpid(jobs, fgpid(jobs))->state = ST;
+    //getjobpid(jobs, fgpid(jobs))->state = ST;
     kill(-1 * fgpid(jobs), sig);
     return;
 }
