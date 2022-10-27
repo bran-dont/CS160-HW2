@@ -317,7 +317,7 @@ void do_bgfg(char **argv)
 
     char bg[3] = {'b', 'g', '\0'};
     char fg[3] = {'f', 'g', '\0'};
-    char *string[5];
+    char *string[MAXLINE];
 
     // Create string array
     unsigned int index = 0;
@@ -346,9 +346,9 @@ void do_bgfg(char **argv)
     char *position = strchr(string[1], '%');
     int job;
     if (position != NULL) {
-        //printf("FOUND A PERCENT! %s\n", (position)+1);
         isJID = 1;
-        job = (int)((position)+1);
+        job = (position)+1;
+        //printf("job is %s\n", job);
     }
     else {
         isJID = 0;
@@ -363,32 +363,39 @@ void do_bgfg(char **argv)
     struct job_t *currJob = NULL;
     if (isJID == 1) {
         // JID
-        currJob = getjobjid(jobs, string[1]);
+        //printf("hithere\n");
+        //printf(job);
+        //listjobs(jobs);
+        //printf("\n\n");
+        currJob = getjobjid(jobs, atoi(job));
+        //printf("currJob JID is %d\n", currJob->jid);
     }
     else if (isJID == 0) {
         // PID
         currJob = getjobpid(jobs, (pid_t)(string[1]));
     }
+
     // If job exists, update state
     if (currJob == NULL) {
         printf("%s: No such job\n", string[1]);
         return;
     }
-    else if (task == 1 && currJob->state == ST) {
+    else if (task == 1) {
         // BG
         // ST -> BG
         currJob->state = BG;
-        //printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
+        printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
     }
-    else if (task == 0 && (currJob->state == ST || currJob->state == BG)) {
+    else if (task == 0) {
         // FG 
         // ST -> FG
         // BG -> FG
-        pid_t currFGtaskPID = fgpid(task);
-        if (currFGtaskPID != 0) {
-            getjobpid(jobs, getjobpid(jobs, currFGtaskPID))->state = ST;
-        }
+        //printf("yo\n");
         currJob->state = FG;
+        waitfg(fgpid(jobs));
+        //printf("\n\nDONE\n");
+        //listjobs(jobs);
+        //printf("\n\n");
     }
     return;
 }
@@ -399,12 +406,14 @@ void do_bgfg(char **argv)
 void waitfg(pid_t pid)
 {
     while (1) {
-       if (pid != fgpid(jobs)) break; // stop waiting when job isn't in foreground anymore
-       else sleep(1); // wait
+        //listjobs(jobs);
+        if (pid != fgpid(jobs)) break; // stop waiting when job isn't in foreground anymore
+        else sleep(1); // wait
     }
     // while(pid == fgpid(jobs)) {
     //     sleep(1);
     // }
+    // printf("done waiting\n");
     return;
 }
 
@@ -575,9 +584,15 @@ struct job_t *getjobjid(struct job_t *jobs, int jid)
 
     if (jid < 1)
 	return NULL;
-    for (i = 0; i < MAXJOBS; i++)
-	if (jobs[i].jid == jid)
-	    return &jobs[i];
+    for (i = 0; i < MAXJOBS; i++) {
+    //printf("job id is %d\n", jobs[i].jid);
+    //printf("jid is %d\n", jid);
+        if (jobs[i].jid == jid) {
+            //printf("SUCCESS\n");
+            return &jobs[i];
+        }
+	    //return &jobs[i];
+    }
     return NULL;
 }
 
