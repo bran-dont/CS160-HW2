@@ -208,7 +208,10 @@ void eval(char *cmdline)
                 // run func
                 sigprocmask(SIG_UNBLOCK, &mask, NULL);
                 setpgid(0, 0);
-                execve(argv[0], argv, environ);
+                if(execve(argv[0], argv, environ) < 0) {
+                    printf("%s: Command not found\n", argv[0]);
+                    exit(0);
+                }
                 //exit(0);
             }
         }
@@ -326,6 +329,18 @@ void do_bgfg(char **argv)
         //printf("string[%d] is %s\n", index, string[index]);
         index++;
     }
+    if (string[1] == NULL) {
+        printf("%s command requires PID or %%jobid argument\n", string[0]);
+        return;
+    }
+    
+    char *arg;
+    arg = argv[1];
+    
+    if (arg[0] != '%' && !(isdigit(arg[0]))) {
+      printf("%s: argument must be a PID or %%jobid\n", argv[0]);
+      return;
+    }
 
     // Check what task this is
     if (strcmp(string[0], bg) == 0) {
@@ -355,26 +370,25 @@ void do_bgfg(char **argv)
         job = (pid_t)(string[1]);
     }
 
-    //printf("Listing jobs\n");
-    //listjobs(jobs);
-    //printf("Done\n");
-
     // Now get job
     struct job_t *currJob = NULL;
     if (isJID == 1) {
-        // JID
-        //printf("hithere\n");
-        //printf(job);
-        //listjobs(jobs);
-        //printf("\n\n");
         currJob = getjobjid(jobs, atoi(job));
+        if (currJob == NULL) {
+            printf("%s: No such job\n", string[1]);
+            return;
+        }
         //printf("currJob JID is %d\n", currJob->jid);
     }
     else if (isJID == 0) {
         // PID
         currJob = getjobpid(jobs, (pid_t)(string[1]));
+        if (currJob == NULL) {
+            printf ( "(%s): No such process\n", argv[1]);
+            return;
+        }
     }
-
+    kill(-currJob->pid, SIGCONT);
     // If job exists, update state
     if (currJob == NULL) {
         printf("%s: No such job\n", string[1]);
@@ -393,9 +407,6 @@ void do_bgfg(char **argv)
         //printf("yo\n");
         currJob->state = FG;
         waitfg(fgpid(jobs));
-        //printf("\n\nDONE\n");
-        //listjobs(jobs);
-        //printf("\n\n");
     }
     return;
 }
