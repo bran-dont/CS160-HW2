@@ -167,13 +167,8 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
     char *argv[MAXLINE];
-<<<<<<< HEAD
-    int task = parseline(cmdline, argv);
-    
-=======
     int test = parseline(cmdline, argv);
     //printf("parseline returns %d\n", test);
->>>>>>> 40f7aa58df16e26acbab09049605b8cd9c36594f
     if (argv[0] != NULL) {
         if (!builtin_cmd(argv)) {
             int index = 0;
@@ -189,17 +184,26 @@ void eval(char *cmdline)
 
             int pid;
             if (pid = fork()) {
+                // Parent
                 addjob(jobs, pid, job_loc, cmdline);
                 sigprocmask(SIG_UNBLOCK, &mask, NULL);
-                if (job_loc == FG) {
-                    waitfg(pid);
+                //printf("[%d] (%d) %s", pid2jid(pid), (int)pid, cmdline);
+                //if (job_loc == FG) {
+                //    waitfg(pid);
                     //sigchld_handler(SIGCHLD);
+                //}
+                if (!test) {
+                    waitfg(pid);
+                }
+                else {
+                    printf("[%d] (%d) %s", pid2jid(pid), (int)pid, cmdline);
                 }
             }
             else {
+                // Child
                 // run func
-                sigprocmask(SIG_UNBLOCK, &mask, NULL);
                 setpgid(0, 0);
+                sigprocmask(SIG_UNBLOCK, &mask, NULL);
                 execve(argv[0], argv, environ);
                 //exit(0);
             }
@@ -272,7 +276,7 @@ int parseline(const char *cmdline, char **argv)
 int builtin_cmd(char **argv) 
 {
     char quit[5] = {'q', 'u', 'i', 't', '\0'};
-    char jobs[5] = {'j', 'o', 'b', 's', '\0'};
+    char blah[5] = {'j', 'o', 'b', 's', '\0'};
     char bg[3] = {'b', 'g', '\0'};
     char fg[3] = {'f', 'g', '\0'};
     if (argv[0] == NULL) { return 0; }
@@ -280,7 +284,7 @@ int builtin_cmd(char **argv)
         //sigquit_handler(SIGQUIT);
         exit(0);
     }
-    if (strcmp(argv[0], jobs) == 0) {
+    if (strcmp(argv[0], blah) == 0) {
         listjobs(jobs);
         return 1;
     }
@@ -370,7 +374,6 @@ void do_bgfg(char **argv)
         // BG
         // ST -> BG
         currJob->state = BG;
-        printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
     }
     else if (task == 0 && (currJob->state == ST || currJob->state == BG)) {
         // FG 
@@ -409,9 +412,6 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
-<<<<<<< HEAD
-
-=======
     pid_t pid;
     int status;
     while ((pid = waitpid(-1, &status, WNOHANG | WUNTRACED)) > 0) {
@@ -420,6 +420,7 @@ void sigchld_handler(int sig)
         }
         else if (WIFSIGNALED(status)) {
             if (status == SIGSTOP || status == SIGINT) {
+                printf("Job [%d] (%d) terminated by signal %d\n",  pid2jid(pid), (int)pid, WTERMSIG(status));
                 deletejob(jobs, pid);
             }
             else if (status == SIGTSTP) {
@@ -427,7 +428,6 @@ void sigchld_handler(int sig)
             }
         }
     }
->>>>>>> 40f7aa58df16e26acbab09049605b8cd9c36594f
     return;
 }
 
@@ -438,11 +438,7 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
-<<<<<<< HEAD
-    kill()
-=======
     kill(-1 * fgpid(jobs), sig);
->>>>>>> 40f7aa58df16e26acbab09049605b8cd9c36594f
     return;
 }
 
