@@ -167,8 +167,8 @@ int main(int argc, char **argv)
 void eval(char *cmdline) 
 {
     char *argv[MAXLINE];
-    int test = parseline(cmdline, argv);
-    printf("parseline returns %d\n", test);
+    int task = parseline(cmdline, argv);
+    
     if (argv[0] != NULL) {
         if (!builtin_cmd(argv)) {
             int index = 0;
@@ -318,7 +318,7 @@ void do_bgfg(char **argv)
     char *position = strchr(string[1], '%');
     int job;
     if (position != NULL) {
-        printf("FOUND A PERCENT! %s\n", (position)+1);
+        // printf("FOUND A PERCENT! %s\n", (position)+1);
         isJID = 1;
         job = (int)((position)+1);
     }
@@ -350,13 +350,14 @@ void do_bgfg(char **argv)
         // BG
         // ST -> BG
         currJob->state = BG;
+        printf("[%d] (%d) %s", currJob->jid, currJob->pid, currJob->cmdline);
     }
     else if (task == 0 && (currJob->state == ST || currJob->state == BG)) {
         // FG 
         // ST -> FG
         // BG -> FG
         pid_t currFGtaskPID = fgpid(task);
-        if (currFGtask != 0) {
+        if (currFGtaskPID != 0) {
             getjobpid(jobs, getjobpid(jobs, currFGtaskPID))->state = ST;
         }
         currJob->state = FG;
@@ -369,6 +370,9 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
+    while(pid == fgpid(jobs)) {
+        sleep(1);
+    }
     return;
 }
 
@@ -385,6 +389,7 @@ void waitfg(pid_t pid)
  */
 void sigchld_handler(int sig) 
 {
+
     return;
 }
 
@@ -395,6 +400,7 @@ void sigchld_handler(int sig)
  */
 void sigint_handler(int sig) 
 {
+    kill()
     return;
 }
 
@@ -623,7 +629,7 @@ handler_t *Signal(int signum, handler_t *handler)
  */
 void sigquit_handler(int sig) 
 {
-    printf("Terminating after receipt of SIGQUIT signal\n");
+    //printf("Terminating after receipt of SIGQUIT signal\n");
     exit(1);
 }
 
